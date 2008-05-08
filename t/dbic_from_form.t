@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 14;
+use Test::More tests => 11;
 use lib 't/lib';
 use lib '../Rose-HTMLx-Form-Field-DateTimeSelect/lib/';
 use DBSchema;
@@ -60,7 +60,6 @@ $form->params( {
     }
 );
 $form->init_fields();
-$form->validate;
 dbic_from_form($form, $dvd);
 
 is ( $dvd->name, 'Test name', 'Dvd name set' );
@@ -87,16 +86,11 @@ my $user = $schema->resultset( 'User' )->new( {} );
 options_from_resultset( $form, $schema->resultset( 'User' ));
 $form->init_fields();
 
-my @tags = $form->form( 'owned_dvds' )->form( '1' )->field( 'tags' )->internal_value;
-is_deeply( \@tags, [ 1, 2 ], 'Tags' );
-
 dbic_from_form($form, $user);
 my @owned_dvds = $user->owned_dvds;
 is( scalar @owned_dvds, 2, 'Has many relations created' );
-ok( $owned_dvds[0]->id, 'New id' );
 is( $owned_dvds[0]->name, 'temp name 1', 'Name in a has_many related record saved' );
 @tags = $owned_dvds[1]->tags;
 is( scalar @tags, 2, 'Tags in has_many related record saved' );
-ok( $owned_dvds[1]->id, 'Second new id' );
 is( $owned_dvds[1]->name, 'temp name 2', 'Second name in a has_many related record saved' );
 

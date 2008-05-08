@@ -10,6 +10,8 @@ WriteMakefile(
     ABSTRACT     => 'Integration of Rose::HTML::Form with DBIx::Class',
     PREREQ_PM    => {
                      'Test::Simple' => 0.44,
-                     'Rose::HTML::Object' => 0,
+                     'Rose::Object' => 0.85,
+                     'Rose::HTML::Object' => 0.554,
                     },
 );
+
