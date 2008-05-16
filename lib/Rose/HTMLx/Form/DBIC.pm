@@ -105,6 +105,18 @@ sub _get_pk_for_related {
     return $result_source->primary_columns;
 }
 
+sub _delete_empty_auto_increment {
+    my ( $object ) = @_;
+    for my $col ( keys %{$object->{_column_data}}){
+        if( $object->result_source->column_info( $col )->{is_auto_increment} 
+                and 
+            ( ! defined $object->{_column_data}{$col} or $object->{_column_data}{$col} eq '' )
+        ){
+            delete $object->{_column_data}{$col}
+        }
+    }
+}
+
 sub dbic_from_form { 
     my( $form, $object ) = @_;
 
@@ -115,10 +127,12 @@ sub dbic_from_form {
         my $name = $field->local_name;
         if($object->can($name)){
             # columns and other accessors
-            if( $object->result_source->has_column($name) or 
-                ( !$object->result_source->has_relationship($name) and !$object->can( 'set_' . $name ) )
+            if( $object->result_source->has_column($name) 
+                    or 
+                ( 
+                    !$object->result_source->has_relationship($name) and !$object->can( 'set_' . $name ) 
+                )
             ) {
-#                warn "setting $name to " . $field->internal_value;
                 $object->$name($field->internal_value);
             }
         }
@@ -133,12 +147,13 @@ sub dbic_from_form {
                 if( not defined $sub_object ){
                     $sub_object = $object->new_related( $name, {} );
                     # fix for DBIC bug
-                    delete $object->{_inflated_column}{'current_borrower'};
+                    delete $object->{_inflated_column}{$name};
                 }
                 dbic_from_form( $sub_form, $sub_object );
                 $object->set_from_related( $name, $sub_object );
         }
     }
+    _delete_empty_auto_increment($object);
     $object->update_or_insert;
 
     # updating relations that can be done only after the row is inserted into the database

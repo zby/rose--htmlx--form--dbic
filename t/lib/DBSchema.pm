@@ -10,30 +10,32 @@ use DateTime;
 
 __PACKAGE__->load_classes;
 
-my $dsn    = 'dbi:SQLite:dbname=t/var/dvdzbr.db';
 sub get_test_schema {
-    my $schema = __PACKAGE__->connect( $dsn, '', '', {} );
+    my ( $dsn, $user, $pass ) = @_;
+    $dsn ||= 'dbi:SQLite:dbname=t/var/dvdzbr.db';
+    warn "testing $dsn";
+    my $schema = __PACKAGE__->connect( $dsn, $user, $pass, {} );
     $schema->deploy({ add_drop_table => 1, });
     $schema->populate('User', [
-        [ qw/id username name password / ],
-        [ 1, 'jgda', 'Jonas Alves', ''],
-        [ 2, 'isa' , 'Isa', '', ],
-        [ 3, 'zby' , 'Zbyszek Lukasiak', ''],
+        [ qw/username name password / ],
+        [ 'jgda', 'Jonas Alves', ''],
+        [ 'isa' , 'Isa', '', ],
+        [ 'zby' , 'Zbyszek Lukasiak', ''],
         ]
     );
     $schema->populate('Tag', [
-        [ qw/id name file / ],
-        [ 1, 'comedy', '' ],
-        [ 2, 'dramat', '' ],
-        [ 3, 'australian', '' ],
+        [ qw/name file / ],
+        [ 'comedy', '' ],
+        [ 'dramat', '' ],
+        [ 'australian', '' ],
         ]
     );
     $schema->populate('Dvd', [
-        [ qw/id name imdb_id owner current_borrower creation_date alter_date / ],
-        [ 1, 'Picnick under the Hanging Rock', 123, 1, 3, '2003-01-16 23:12:01', undef ],
-        [ 2, 'The Deerhunter', 1234, 1, 1, undef, undef ],
-        [ 3, 'Rejs', 1235, 3, 1, undef, undef ],
-        [ 4, 'Seksmisja', 1236, 3, 1, undef, undef ],
+        [ qw/name imdb_id owner current_borrower creation_date alter_date / ],
+        [ 'Picnick under the Hanging Rock', 123, 1, 3, '2003-01-16 23:12:01', undef ],
+        [ 'The Deerhunter', 1234, 1, 1, undef, undef ],
+        [ 'Rejs', 1235, 3, 1, undef, undef ],
+        [ 'Seksmisja', 1236, 3, 1, undef, undef ],
         ]
     ); 
     $schema->populate( 'Dvdtag', [

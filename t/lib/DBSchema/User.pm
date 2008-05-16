@@ -9,7 +9,7 @@ use base 'DBIx::Class';
 #use overload '""' => sub {$_[0]->name}, fallback => 1;
 
 __PACKAGE__->load_components("PK::Auto", "Core");
-__PACKAGE__->table("user");
+__PACKAGE__->table("usr");
 __PACKAGE__->add_columns(
     "id" => {
         data_type => 'integer',
