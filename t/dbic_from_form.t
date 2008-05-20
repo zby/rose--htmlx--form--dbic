@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 11;
+use Test::More tests => 3;
 use lib 't/lib';
 use lib '../Rose-HTMLx-Form-Field-DateTimeSelect/lib/';
 use DBSchema;
@@ -8,7 +8,7 @@ use YAML::Syck qw( Load );
 use Data::Dumper;
 use DvdForm;
 use UserForm2;
-use Rose::HTMLx::Form::DBIC qw( options_from_resultset init_with_dbic dbic_from_form );
+use Rose::HTMLx::Form::DBIC qw( options_from_resultset init_with_dbic dbic_from_form save_updates values_hash );
 
 my $schema = DBSchema::get_test_schema();
 my $dvd_rs = $schema->resultset( 'Dvd' );
@@ -36,16 +36,25 @@ $form->params( {
 );
 $form->init_fields();
 $form->validate;
-dbic_from_form($form, $dvd);
+$updates = {
+        aaaa => undef,
+        tags => [ '2', '3' ], 
+        name => 'Test name',
+#        'creation_date.year' => 2002,
+#        'creation_date.month' => 1,
+#        'creation_date.day' => 3,
+#        'creation_date.hour' => 4,
+#        'creation_date.minute' => 33,
+#        'creation_date.pm' => 1,
+        owner => $owner->id,
+        current_borrower => {
+            name => 'temp name',
+            username => 'temp name',
+            password => 'temp name',
+        }
+};
 
-is ( $dvd->name, 'Test name', 'Dvd name set' );
-is_deeply ( [ map {$_->id} $dvd->tags ], [ '2', '3' ], 'Tags set' );
-#my $value = $dvd->creation_date;
-#is( "$value", '2002-01-03T16:33:00', 'Date set');
-is ( $dvd->owner->id, $owner->id, 'Owner set' );
-
-is ( $dvd->current_borrower->name, 'temp name', 'Related record created' );
-
+is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
 # changing existing records
 
 $form->clear;
@@ -60,11 +69,17 @@ $form->params( {
     }
 );
 $form->init_fields();
-dbic_from_form($form, $dvd);
+$updates = {
+        aaaa => undef,
+        name => 'Test name',
+        tags => [ ], 
+        'owner' => $owner->id,
+        current_borrower => {
+            name => 'temp name',
+        }
+};
 
-is ( $dvd->name, 'Test name', 'Dvd name set' );
-is ( $dvd->owner->id, $owner->id, 'Owner set' );
-is ( $dvd->current_borrower->name, 'temp name', 'Related record modified' );
+is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
 
 # repeatable
 
@@ -86,11 +101,23 @@ my $user = $schema->resultset( 'User' )->new( {} );
 options_from_resultset( $form, $schema->resultset( 'User' ));
 $form->init_fields();
 
-dbic_from_form($form, $user);
-my @owned_dvds = $user->owned_dvds;
-is( scalar @owned_dvds, 2, 'Has many relations created' );
-is( $owned_dvds[0]->name, 'temp name 1', 'Name in a has_many related record saved' );
-@tags = $owned_dvds[1]->tags;
-is( scalar @tags, 2, 'Tags in has_many related record saved' );
-is( $owned_dvds[1]->name, 'temp name 2', 'Second name in a has_many related record saved' );
+$updates = {
+    name  => 'temp name',
+    username => 'temp username',
+    password => 'temp username',
+    owned_dvds =>[
+    {
+        'id' => undef,
+        'name' => 'temp name 1',
+        'tags' => [ 1, 2 ],
+    },
+    {
+        'id' => undef,
+        'name' => 'temp name 2',
+        'tags' => [ 2, 3 ],
+    }
+    ]
+};
+
+is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
 

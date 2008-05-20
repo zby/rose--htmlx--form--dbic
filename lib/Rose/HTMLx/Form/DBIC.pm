@@ -11,7 +11,7 @@ BEGIN {
     @ISA         = qw(Exporter);
     #Give a hoot don't pollute, do not export more than needed by default
     @EXPORT      = qw( );
-    @EXPORT_OK   = qw( options_from_resultset init_with_dbic dbic_from_form );
+    @EXPORT_OK   = qw( options_from_resultset init_with_dbic dbic_from_form save_updates values_hash );
     %EXPORT_TAGS = ();
 }
 
@@ -117,40 +117,73 @@ sub _delete_empty_auto_increment {
     }
 }
 
+sub values_hash {
+    my $form = shift;
+    
+    my %hash; 
+    foreach my $field ($form->local_fields) {
+        $hash{$field->local_name} = $field->internal_value;
+    }
+    foreach my $sub_form ($form->forms ) {
+        if( $sub_form->isa( 'Rose::HTML::Form::Repeatable' ) ){
+            for my $sub_sub_form ( $sub_form->forms ) {
+                push @{$hash{$sub_form->form_name}}, values_hash( $sub_sub_form );
+            }
+        }
+        else{
+            $hash{$sub_form->form_name} = values_hash( $sub_form );
+        }
+    }
+    return \%hash;
+}
+
 sub dbic_from_form { 
     my( $form, $object ) = @_;
 
+    my $updates = values_hash( $form );
+    return save_updates( $object, $updates );
+}
+
+sub _master_relation {
+    my ( $result_source, $rel ) = @_;
+    my $info = $result_source->relationship_info( $rel );
+    warn Dumper( $info ); use Data::Dumper;
+}
+
+sub save_updates { 
+    my( $object, $updates ) = @_;
+
     defined $object or croak 'No object';
 
-    # updating fields 
-    foreach my $field ($form->local_fields) { 
-        my $name = $field->local_name;
+    for my $name ( keys %$updates ){
         if($object->can($name)){
-            # columns and other accessors
-            if( $object->result_source->has_column($name) 
-                    or 
-                ( 
-                    !$object->result_source->has_relationship($name) and !$object->can( 'set_' . $name ) 
-                )
-            ) {
-                $object->$name($field->internal_value);
-            }
-        }
-    }
-    # updating relations that that should be done before the row is inserted into the database
-    # like belongs_to
-    foreach my $sub_form ($form->forms ) {
-        my $name = $sub_form->form_name;
-        my $info = $object->result_source->relationship_info( $name );
-        if( $info and not $info->{attrs}{accessor} eq 'multi'){
-                my $sub_object = $object->$name;
-                if( not defined $sub_object ){
-                    $sub_object = $object->new_related( $name, {} );
-                    # fix for DBIC bug
-                    delete $object->{_inflated_column}{$name};
+            my $value = $updates->{$name};
+            # updating relations that that should be done before the row is inserted into the database
+            # like belongs_to
+            if( $object->result_source->has_relationship($name) 
+                    and 
+                ref $value
+            ){
+                _master_relation( $object->result_source, $name );
+                my $info = $object->result_source->relationship_info( $name );
+                if( $info and not $info->{attrs}{accessor} eq 'multi'){
+                    my $sub_object = $object->$name;
+                    if( not defined $sub_object ){
+                        $sub_object = $object->new_related( $name, {} );
+                        # fix for DBIC bug 
+                        delete $object->{_inflated_column}{$name};
+                    }
+                    save_updates( $sub_object, $value );
+                    $object->set_from_related( $name, $sub_object );
                 }
-                dbic_from_form( $sub_form, $sub_object );
-                $object->set_from_related( $name, $sub_object );
+            }
+            # columns and other accessors
+            elsif( $object->result_source->has_column($name) 
+                    or 
+                !$object->can( 'set_' . $name ) 
+            ) {
+                $object->$name($value);
+            }
         }
     }
     _delete_empty_auto_increment($object);
@@ -158,35 +191,31 @@ sub dbic_from_form {
 
     # updating relations that can be done only after the row is inserted into the database
     # like has_many and many_to_many
-    foreach my $field ($form->local_fields) { 
-        my $name = $field->local_name;
+    for my $name ( keys %$updates ){
         # many to many case
         if($object->can($name) and 
             !$object->result_source->has_relationship($name) and 
             $object->can( 'set_' . $name )
         ) {
                 my ( $pk ) = _get_pk_for_related( $object, $name );
-                my @values = $field->internal_value;
+                my @values = @{$updates->{$name}};
                 my @rows;
                 my $result_source = $object->$name->result_source;
                 @rows = $result_source->resultset->search({ $pk => [ @values ] } ) if @values; 
                 my $set_meth = 'set_' . $name;
                 $object->$set_meth( \@rows );
         }
-    }
-    foreach my $sub_form ($form->forms ) {
-        my $name = $sub_form->form_name;
-        my $info = $object->result_source->relationship_info( $name );
-        if( $info ){
-            if( $sub_form->isa( 'Rose::HTML::Form::Repeatable' ) ){
-                for my $sub_sub_form ( $sub_form->forms ) {
+        # has many case
+        elsif( $object->result_source->has_relationship($name) ){
+            if( ref $updates->{$name} eq 'ARRAY' ){
+                for my $sub_updates ( @{$updates->{$name}} ) {
                     my ( @pks ) = _get_pk_for_related( $object, $name );
                     my %pks;
                     for my $pk ( @pks ){
-                        $pks{$pk} = $sub_sub_form->field( $pk )->internal_value;
+                        $pks{$pk} = $sub_updates->{$pk};
                     }
                     my $sub_object = $object->$name->search( \%pks )->first || $object->$name->new({}); 
-                    dbic_from_form( $sub_sub_form, $sub_object );
+                    save_updates ( $sub_object, $sub_updates );
                 }
             }
         }
