@@ -46,6 +46,10 @@ __PACKAGE__->belongs_to('owner', 'User', { id => 'owner' });
 __PACKAGE__->belongs_to('current_borrower', 'User', { id => 'current_borrower' });
 __PACKAGE__->has_many('dvdtags', 'Dvdtag', { 'foreign.dvd' => 'self.id' });
 __PACKAGE__->many_to_many('tags', 'dvdtags' => 'tag');
+__PACKAGE__->might_have(
+    liner_notes => 'DBSchema::LinerNotes', undef,
+    { proxy => [ qw/notes/ ] },
+);
 
 1;
 

@@ -101,7 +101,9 @@ sub init_with_dbic {
 }
 sub _get_pk_for_related {
     my ( $object, $relation ) = @_;
-    my $result_source = $object->$relation->new({})->result_source;
+
+    my $rs = $object->result_source->resultset;
+    my $result_source = _get_related_source( $rs, $relation );
     return $result_source->primary_columns;
 }
 
@@ -144,11 +146,29 @@ sub dbic_from_form {
     return save_updates( $object, $updates );
 }
 
-sub _master_relation {
-    my ( $result_source, $rel ) = @_;
-    my $info = $result_source->relationship_info( $rel );
-    warn Dumper( $info ); use Data::Dumper;
+sub _master_relation_cond {
+    my ( $object, $cond, @foreign_ids ) = @_;
+    my $foreign_ids_re = join '|', @foreign_ids;
+    if ( ref $cond eq 'HASH' ){
+        for my $f_key ( keys %{$cond} ) {
+            # might_have is not master
+            my $col = $cond->{$f_key};
+            $col =~ s/self\.//;
+            if( $object->column_info( $col )->{is_auto_increment} ){
+                return 0;
+            }
+            if( $f_key =~ /^foreign\.$foreign_ids_re/ ){
+                return 1;
+            }
+        }
+    }elsif ( ref $cond eq 'ARRAY' ){
+        for my $new_cond ( @$cond ) {
+            return 1 if _master_relation_cond( $object, $new_cond, @foreign_ids );
+        }
+    }
+    return;
 }
+
 
 sub save_updates { 
     my( $object, $updates ) = @_;
@@ -164,9 +184,11 @@ sub save_updates {
                     and 
                 ref $value
             ){
-                _master_relation( $object->result_source, $name );
                 my $info = $object->result_source->relationship_info( $name );
-                if( $info and not $info->{attrs}{accessor} eq 'multi'){
+                if( $info and not $info->{attrs}{accessor} eq 'multi'
+                        and 
+                    _master_relation_cond( $object, $info->{cond}, _get_pk_for_related( $object, $name ) )
+                ){
                     my $sub_object = $object->$name;
                     if( not defined $sub_object ){
                         $sub_object = $object->new_related( $name, {} );
@@ -185,6 +207,7 @@ sub save_updates {
                 $object->$name($value);
             }
         }
+        #warn Dumper($object->{_column_data}); use Data::Dumper;
     }
     _delete_empty_auto_increment($object);
     $object->update_or_insert;
@@ -192,6 +215,7 @@ sub save_updates {
     # updating relations that can be done only after the row is inserted into the database
     # like has_many and many_to_many
     for my $name ( keys %$updates ){
+        my $value = $updates->{$name};
         # many to many case
         if($object->can($name) and 
             !$object->result_source->has_relationship($name) and 
@@ -205,8 +229,9 @@ sub save_updates {
                 my $set_meth = 'set_' . $name;
                 $object->$set_meth( \@rows );
         }
-        # has many case
         elsif( $object->result_source->has_relationship($name) ){
+            my $info = $object->result_source->relationship_info( $name );
+            # has many case
             if( ref $updates->{$name} eq 'ARRAY' ){
                 for my $sub_updates ( @{$updates->{$name}} ) {
                     my ( @pks ) = _get_pk_for_related( $object, $name );
@@ -217,6 +242,17 @@ sub save_updates {
                     my $sub_object = $object->$name->search( \%pks )->first || $object->$name->new({}); 
                     save_updates ( $sub_object, $sub_updates );
                 }
+            }
+            # might_have case
+            elsif ( ! _master_relation_cond( $object, $info->{cond}, _get_pk_for_related( $object, $name ) ) ){
+                my $sub_object = $object->$name;
+                if( not defined $sub_object ){
+                    $sub_object = $object->new_related( $name, {} );
+                    # fix for DBIC bug 
+                    delete $object->{_inflated_column}{$name};
+                }
+                save_updates( $sub_object, $value );
+                #$object->set_from_related( $name, $sub_object );
             }
         }
     }

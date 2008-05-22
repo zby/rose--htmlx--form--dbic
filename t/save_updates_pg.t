@@ -39,6 +39,9 @@ $updates = {
             name => 'temp name',
             username => 'temp name',
             password => 'temp name',
+        },
+        liner_notes => {
+            notes => 'test note'
         }
 };
 
@@ -91,7 +94,7 @@ $updates = {
 
 my $user = $schema->resultset( 'User' )->new( {} );
 save_updates( $user, $updates );
-my @owned_dvds = $user->owned_dvds;
+my @owned_dvds = $user->owned_dvds->search({}, { order_by => 'id' } );
 is( scalar @owned_dvds, 2, 'Has many relations created' );
 is( $owned_dvds[0]->name, 'temp name 1', 'Name in a has_many related record saved' );
 @tags = $owned_dvds[1]->tags;

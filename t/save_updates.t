@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 11;
+use Test::More tests => 12;
 use lib 't/lib';
 use lib '../Rose-HTMLx-Form-Field-DateTimeSelect/lib/';
 use DBSchema;
@@ -31,11 +31,13 @@ $updates = {
             name => 'temp name',
             username => 'temp name',
             password => 'temp name',
+        },
+        liner_notes => {
+            notes => 'test note'
         }
 };
 
 save_updates( $dvd, $updates );
-warn $owner->name;
 
 is ( $dvd->name, 'Test name', 'Dvd name set' );
 is_deeply ( [ map {$_->id} $dvd->tags ], [ '2', '3' ], 'Tags set' );
@@ -44,6 +46,7 @@ is_deeply ( [ map {$_->id} $dvd->tags ], [ '2', '3' ], 'Tags set' );
 is ( $dvd->owner->id, $owner->id, 'Owner set' );
 
 is ( $dvd->current_borrower->name, 'temp name', 'Related record created' );
+is ( $dvd->liner_notes->notes, 'test note', 'might_have record created' );
 
 # changing existing records
 
