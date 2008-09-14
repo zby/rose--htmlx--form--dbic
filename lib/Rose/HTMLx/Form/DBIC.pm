@@ -243,7 +243,7 @@ sub save_updates {
                     save_updates ( $sub_object, $sub_updates );
                 }
             }
-            # might_have case
+            # might_have and has_one case
             elsif ( ! _master_relation_cond( $object, $info->{cond}, _get_pk_for_related( $object, $name ) ) ){
                 my $sub_object = $object->$name;
                 if( not defined $sub_object ){
@@ -251,7 +251,9 @@ sub save_updates {
                     # fix for DBIC bug 
                     delete $object->{_inflated_column}{$name};
                 }
+                warn "sub id: " . $sub_object->id;
                 save_updates( $sub_object, $value );
+                warn "sub id: " . $sub_object->id;
                 #$object->set_from_related( $name, $sub_object );
             }
         }
@@ -291,8 +293,7 @@ Rose::HTML::Form::DBIC - Module abstract (<= 44 characters) goes here
 
 =head1 DESCRIPTION
 
-This module exports three functions integrating Rose::HTML::Form with DBIx::Class.
-
+This module exports functions integrating Rose::HTML::Form with DBIx::Class.
 
 =head1 USAGE
 
