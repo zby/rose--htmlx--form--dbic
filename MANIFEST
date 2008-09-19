@@ -5,9 +5,12 @@ Todo
 Changes
 Makefile.PL
 lib/Rose/HTMLx/Form/DBIC.pm
+lib/Rose/HTMLx/Form/DBIC/FormGenerator.pm
 t/dbic_from_form.t
 t/init_with_dbic.t
 t/options_from_resultset.t
+t/generate_form.t
+t/save_updates.t
 t/lib/DvdForm2.pm
 t/lib/DvdForm.pm
 t/lib/UserForm2.pm
@@ -15,11 +18,12 @@ t/lib/UserForm.pm
 t/lib/MySchema.pm
 t/lib/MySchema/Test.pm
 t/lib/DBSchema.pm
-t/lib/DBSchema/User.pm
-t/lib/DBSchema/Dvd.pm
-t/lib/DBSchema/Tag.pm
-t/lib/DBSchema/Dvdtag.pm
-t/lib/DBSchema/UserRole.pm
-t/lib/DBSchema/Role.pm
+t/lib/DBSchema/Result/User.pm
+t/lib/DBSchema/Result/Dvd.pm
+t/lib/DBSchema/Result/Tag.pm
+t/lib/DBSchema/Result/Dvdtag.pm
+t/lib/DBSchema/Result/UserRole.pm
+t/lib/DBSchema/Result/Role.pm
+t/lib/DBSchema/Result/LinerNotes.pm
 t/var/dvdzbr.db
 

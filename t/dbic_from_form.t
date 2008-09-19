@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 3;
+use Test::More tests => 5;
 use lib 't/lib';
 use lib '../Rose-HTMLx-Form-Field-DateTimeSelect/lib/';
 use DBSchema;
@@ -9,6 +9,7 @@ use Data::Dumper;
 use DvdForm;
 use UserForm2;
 use Rose::HTMLx::Form::DBIC qw( options_from_resultset init_with_dbic dbic_from_form save_updates values_hash );
+use String::Random qw(random_regex);
 
 my $schema = DBSchema::get_test_schema();
 my $dvd_rs = $schema->resultset( 'Dvd' );
@@ -120,4 +121,23 @@ $updates = {
 };
 
 is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
+
+
+my $dvd_rs = $schema->resultset( 'Dvd' );
+my $dvd = $dvd_rs->next;
+$random_string = 'random ' . random_regex('\w{20}');
+ok( $dvd->name ne $random_string );
+
+$form = DvdForm->new;
+$form->delete_forms;
+options_from_resultset( $form, $dvd_rs );
+$form->params( {
+        name => $random_string, 
+        owner => 1,
+    }
+);
+$form->init_fields();
+my $dvd = dbic_from_form( $form, $dvd_rs, $dvd->id );
+
+is ( $dvd->name, $random_string, 'Dvd name set' );
 

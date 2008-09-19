@@ -11,12 +11,12 @@ use Rose::HTMLx::Form::DBIC qw( save_updates);
 my $schema = DBSchema::get_test_schema();
 my $dvd_rs = $schema->resultset( 'Dvd' );
 
-my $dvd = $schema->resultset( 'Dvd' )->new( {} );
 my $owner = $schema->resultset( 'User' )->first;
 
 # creating new records
 
 $updates = {
+    id => undef,
         aaaa => undef,
         tags => [ '2', '3' ], 
         name => 'Test name',
@@ -37,7 +37,7 @@ $updates = {
         }
 };
 
-save_updates( $dvd, $updates );
+my $dvd = save_updates( $dvd_rs, $updates );
 
 is ( $dvd->name, 'Test name', 'Dvd name set' );
 is_deeply ( [ map {$_->id} $dvd->tags ], [ '2', '3' ], 'Tags set' );
@@ -51,6 +51,7 @@ is ( $dvd->liner_notes->notes, 'test note', 'might_have record created' );
 # changing existing records
 
 $updates = {
+    id => $dvd->id,
         aaaa => undef,
         name => 'Test name',
         tags => [ ], 
@@ -59,7 +60,7 @@ $updates = {
             name => 'temp name',
         }
 };
-save_updates( $dvd, $updates );
+$dvd = save_updates( $dvd_rs, $updates );
 
 is ( $dvd->name, 'Test name', 'Dvd name set' );
 is ( $dvd->owner->id, $owner->id, 'Owner set' );
@@ -68,6 +69,7 @@ is ( $dvd->current_borrower->name, 'temp name', 'Related record modified' );
 # repeatable
 
 $updates = {
+    id => undef,
     name  => 'temp name',
     username => 'temp username',
     password => 'temp username',
@@ -85,8 +87,7 @@ $updates = {
     ]
 };
 
-my $user = $schema->resultset( 'User' )->new( {} );
-save_updates( $user, $updates );
+my $user = save_updates( $schema->resultset( 'User' ), $updates );
 my @owned_dvds = $user->owned_dvds;
 is( scalar @owned_dvds, 2, 'Has many relations created' );
 is( $owned_dvds[0]->name, 'temp name 1', 'Name in a has_many related record saved' );

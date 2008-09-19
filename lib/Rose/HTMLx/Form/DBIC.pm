@@ -56,7 +56,7 @@ sub _get_related_source {
     # many to many case
     my $row = $rs->new({});
     if ( $row->can( $name ) and $row->can( 'add_to_' . $name ) and $row->can( 'set_' . $name ) ){
-        return $row->$name->new({})->result_source;
+        return $row->$name->result_source;
     }
     return;
 }
@@ -85,7 +85,7 @@ sub init_with_dbic {
     foreach my $sub_form ($form->forms ) {
         my $name = $sub_form->form_name;
         my $info = $object->result_source->relationship_info( $name );
-        if( $info->{attrs}{accessor} eq 'multi' ){
+        if( $info->{attrs}{accessor} eq 'multi' and $sub_form->isa( 'Rose::HTML::Form::Repeatable' ) ){
             my @sub_objects = $object->$name;
             my $i = 1;
             for my $sub_object ( @sub_objects ){
@@ -140,10 +140,16 @@ sub values_hash {
 }
 
 sub dbic_from_form { 
-    my( $form, $object ) = @_;
-
+    my( $form, $rs, @pks ) = @_;
     my $updates = values_hash( $form );
-    return save_updates( $object, $updates );
+    my @primary_columns = $rs->result_source->primary_columns;
+    for my $value ( @pks ){
+        $updates->{shift @primary_columns} = $value;
+    }
+    for my $key ( @primary_columns ){
+        $updates->{$key} = undef if not length( $updates->{$key} );
+    }
+    return save_updates( $rs, $updates );
 }
 
 sub _master_relation_cond {
@@ -171,95 +177,14 @@ sub _master_relation_cond {
 
 
 sub save_updates { 
-    my( $object, $updates ) = @_;
+    my( $rs, $updates ) = @_;
 
-    defined $object or croak 'No object';
+    defined $rs or croak 'No object';
 
-    for my $name ( keys %$updates ){
-        if($object->can($name)){
-            my $value = $updates->{$name};
-            # updating relations that that should be done before the row is inserted into the database
-            # like belongs_to
-            if( $object->result_source->has_relationship($name) 
-                    and 
-                ref $value
-            ){
-                my $info = $object->result_source->relationship_info( $name );
-                if( $info and not $info->{attrs}{accessor} eq 'multi'
-                        and 
-                    _master_relation_cond( $object, $info->{cond}, _get_pk_for_related( $object, $name ) )
-                ){
-                    my $sub_object = $object->$name;
-                    if( not defined $sub_object ){
-                        $sub_object = $object->new_related( $name, {} );
-                        # fix for DBIC bug 
-                        delete $object->{_inflated_column}{$name};
-                    }
-                    save_updates( $sub_object, $value );
-                    $object->set_from_related( $name, $sub_object );
-                }
-            }
-            # columns and other accessors
-            elsif( $object->result_source->has_column($name) 
-                    or 
-                !$object->can( 'set_' . $name ) 
-            ) {
-                $object->$name($value);
-            }
-        }
-        #warn Dumper($object->{_column_data}); use Data::Dumper;
-    }
-    _delete_empty_auto_increment($object);
-    $object->update_or_insert;
-
-    # updating relations that can be done only after the row is inserted into the database
-    # like has_many and many_to_many
-    for my $name ( keys %$updates ){
-        my $value = $updates->{$name};
-        # many to many case
-        if($object->can($name) and 
-            !$object->result_source->has_relationship($name) and 
-            $object->can( 'set_' . $name )
-        ) {
-                my ( $pk ) = _get_pk_for_related( $object, $name );
-                my @values = @{$updates->{$name}};
-                my @rows;
-                my $result_source = $object->$name->result_source;
-                @rows = $result_source->resultset->search({ $pk => [ @values ] } ) if @values; 
-                my $set_meth = 'set_' . $name;
-                $object->$set_meth( \@rows );
-        }
-        elsif( $object->result_source->has_relationship($name) ){
-            my $info = $object->result_source->relationship_info( $name );
-            # has many case
-            if( ref $updates->{$name} eq 'ARRAY' ){
-                for my $sub_updates ( @{$updates->{$name}} ) {
-                    my ( @pks ) = _get_pk_for_related( $object, $name );
-                    my %pks;
-                    for my $pk ( @pks ){
-                        $pks{$pk} = $sub_updates->{$pk};
-                    }
-                    my $sub_object = $object->$name->search( \%pks )->first || $object->$name->new({}); 
-                    save_updates ( $sub_object, $sub_updates );
-                }
-            }
-            # might_have and has_one case
-            elsif ( ! _master_relation_cond( $object, $info->{cond}, _get_pk_for_related( $object, $name ) ) ){
-                my $sub_object = $object->$name;
-                if( not defined $sub_object ){
-                    $sub_object = $object->new_related( $name, {} );
-                    # fix for DBIC bug 
-                    delete $object->{_inflated_column}{$name};
-                }
-                warn "sub id: " . $sub_object->id;
-                save_updates( $sub_object, $value );
-                warn "sub id: " . $sub_object->id;
-                #$object->set_from_related( $name, $sub_object );
-            }
-        }
-    }
-    return $object;
+    return $rs->recursive_update( $updates );
 }
+
+
 
 #################### main pod documentation begin ###################
 ## Below is the stub of documentation for your module. 
@@ -268,7 +193,7 @@ sub save_updates {
 
 =head1 NAME
 
-Rose::HTML::Form::DBIC - Module abstract (<= 44 characters) goes here
+Rose::HTMLx::Form::DBIC - Module abstract (<= 44 characters) goes here
 
 =head1 SYNOPSIS
 

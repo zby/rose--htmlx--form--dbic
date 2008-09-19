@@ -8,7 +8,7 @@ use warnings;
 use base 'DBIx::Class::Schema';
 use DateTime;
 
-__PACKAGE__->load_classes;
+__PACKAGE__->load_namespaces( default_resultset_class => '+DBIx::Class::ResultSet::RecursiveUpdate' );
 
 sub get_test_schema {
     my ( $dsn, $user, $pass ) = @_;
