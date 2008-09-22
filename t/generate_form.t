@@ -34,5 +34,4 @@ ok( $output !~ /dvdtags /, 'bridge rel not included' );
 ok( $output =~ /tags/, 'many to many included' );
 
 $output = $generator->generate_form( 'Tag' );
-warn $output;
 

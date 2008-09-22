@@ -11,7 +11,7 @@ BEGIN {
     @ISA         = qw(Exporter);
     #Give a hoot don't pollute, do not export more than needed by default
     @EXPORT      = qw( );
-    @EXPORT_OK   = qw( options_from_resultset init_with_dbic dbic_from_form save_updates values_hash );
+    @EXPORT_OK   = qw( options_from_resultset init_from_dbic dbic_from_form values_hash );
     %EXPORT_TAGS = ();
 }
 
@@ -59,6 +59,11 @@ sub _get_related_source {
         return $row->$name->result_source;
     }
     return;
+}
+
+sub init_from_dbic {
+    my( $form, $rs, @pks ) = @_;
+    return init_with_dbic( $form, $rs->find( @pks, { key => 'primary' } ) );
 }
 
 sub init_with_dbic {
@@ -149,7 +154,7 @@ sub dbic_from_form {
     for my $key ( @primary_columns ){
         $updates->{$key} = undef if not length( $updates->{$key} );
     }
-    return save_updates( $rs, $updates );
+    return $rs->recursive_update( $updates );
 }
 
 sub _master_relation_cond {
@@ -173,15 +178,6 @@ sub _master_relation_cond {
         }
     }
     return;
-}
-
-
-sub save_updates { 
-    my( $rs, $updates ) = @_;
-
-    defined $rs or croak 'No object';
-
-    return $rs->recursive_update( $updates );
 }
 
 

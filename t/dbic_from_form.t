@@ -8,7 +8,7 @@ use YAML::Syck qw( Load );
 use Data::Dumper;
 use DvdForm;
 use UserForm2;
-use Rose::HTMLx::Form::DBIC qw( options_from_resultset init_with_dbic dbic_from_form save_updates values_hash );
+use Rose::HTMLx::Form::DBIC qw( options_from_resultset dbic_from_form values_hash );
 use String::Random qw(random_regex);
 
 my $schema = DBSchema::get_test_schema();
@@ -123,8 +123,7 @@ $updates = {
 is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
 
 
-my $dvd_rs = $schema->resultset( 'Dvd' );
-my $dvd = $dvd_rs->next;
+$dvd = $dvd_rs->next;
 $random_string = 'random ' . random_regex('\w{20}');
 ok( $dvd->name ne $random_string );
 
@@ -137,7 +136,7 @@ $form->params( {
     }
 );
 $form->init_fields();
-my $dvd = dbic_from_form( $form, $dvd_rs, $dvd->id );
+$dvd = dbic_from_form( $form, $dvd_rs, $dvd->id );
 
 is ( $dvd->name, $random_string, 'Dvd name set' );
 
