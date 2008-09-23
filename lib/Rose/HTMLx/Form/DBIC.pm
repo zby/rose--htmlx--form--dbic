@@ -2,21 +2,43 @@ package Rose::HTMLx::Form::DBIC;
 use strict;
 use Rose::HTML::Form;
 use Carp;
+use Moose;
 
 
 BEGIN {
     use Exporter ();
     use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
     $VERSION     = '0.01';
-    @ISA         = qw(Exporter);
+#    @ISA         = qw(Exporter);
     #Give a hoot don't pollute, do not export more than needed by default
-    @EXPORT      = qw( );
-    @EXPORT_OK   = qw( options_from_resultset init_from_dbic dbic_from_form values_hash );
-    %EXPORT_TAGS = ();
+#    @EXPORT      = qw( );
+#    @EXPORT_OK   = qw( options_from_resultset init_from_dbic dbic_from_form values_hash );
+#    %EXPORT_TAGS = ();
 }
 
+has 'rs' => (
+    is  => 'ro',
+    isa => 'DBIx::Class::ResultSet',
+);
+
+has 'form' => (
+    is  => 'ro',
+    isa => 'Rose::HTML::Form',
+);
 
 sub options_from_resultset {
+    my( $self ) = @_;
+    _options_from_resultset( $self->form, $self->rs );
+}
+
+sub init_params {
+    my( $self, $params ) = @_;
+    $self->options_from_resultset();
+    $self->form->params( $params );
+    $self->form->init_fields();
+}
+
+sub _options_from_resultset {
     my( $form, $rs ) = @_;
     for my $field ( $form->fields ){
         if ( $field->isa( 'Rose::HTML::Form::Field::SelectBox' ) ){
@@ -38,11 +60,11 @@ sub options_from_resultset {
             my $related_rs = $related_source->resultset;
             if( $sub_form->isa( 'Rose::HTML::Form::Repeatable' ) ){
                 for my $sub_sub_form ( $sub_form->forms ){
-                    options_from_resultset( $sub_sub_form, $related_rs );
+                    _options_from_resultset( $sub_sub_form, $related_rs );
                 }
             }
             else {
-                options_from_resultset( $sub_form, $related_rs );
+                _options_from_resultset( $sub_form, $related_rs );
             }
         }
     }
@@ -62,7 +84,9 @@ sub _get_related_source {
 }
 
 sub init_from_dbic {
-    my( $form, $rs, @pks ) = @_;
+    my( $self, @pks ) = @_;
+    my $form = $self->form;
+    my $rs = $self->rs;
     return init_with_dbic( $form, $rs->find( @pks, { key => 'primary' } ) );
 }
 
@@ -125,7 +149,7 @@ sub _delete_empty_auto_increment {
 }
 
 sub values_hash {
-    my $form = shift;
+    my( $form ) = @_;
     
     my %hash; 
     foreach my $field ($form->local_fields) {
@@ -145,16 +169,23 @@ sub values_hash {
 }
 
 sub dbic_from_form { 
-    my( $form, $rs, @pks ) = @_;
-    my $updates = values_hash( $form );
-    my @primary_columns = $rs->result_source->primary_columns;
-    for my $value ( @pks ){
-        $updates->{shift @primary_columns} = $value;
+    my( $self, @pks ) = @_;
+    my $form = $self->form;
+    my $rs = $self->rs;
+    if ( $form->validate ){
+        my $updates = values_hash( $form );
+        my @primary_columns = $rs->result_source->primary_columns;
+        for my $value ( @pks ){
+            $updates->{shift @primary_columns} = $value;
+        }
+        for my $key ( @primary_columns ){
+            $updates->{$key} = undef if not length( $updates->{$key} );
+        }
+        return $rs->recursive_update( $updates );
     }
-    for my $key ( @primary_columns ){
-        $updates->{$key} = undef if not length( $updates->{$key} );
+    else {
+        return;
     }
-    return $rs->recursive_update( $updates );
 }
 
 sub _master_relation_cond {

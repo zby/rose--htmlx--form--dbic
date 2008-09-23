@@ -1,5 +1,7 @@
 # -*- perl -*-
 
+use strict;
+use warnings;
 use Test::More tests => 5;
 use lib 't/lib';
 use lib '../Rose-HTMLx-Form-Field-DateTimeSelect/lib/';
@@ -13,9 +15,11 @@ use String::Random qw(random_regex);
 
 my $schema = DBSchema::get_test_schema();
 my $dvd_rs = $schema->resultset( 'Dvd' );
+my $user_rs = $schema->resultset( 'User' );
 
-$form = DvdForm->new;
-options_from_resultset( $form, $dvd_rs );
+my $form = DvdForm->new;
+my $processor = Rose::HTMLx::Form::DBIC->new( form => $form, rs => $dvd_rs );
+$processor->options_from_resultset;
 
 my $dvd = $schema->resultset( 'Dvd' )->new( {} );
 my $owner = $schema->resultset( 'User' )->first;
@@ -37,7 +41,7 @@ $form->params( {
 );
 $form->init_fields();
 $form->validate;
-$updates = {
+my $updates = {
         aaaa => undef,
         tags => [ '2', '3' ], 
         name => 'Test name',
@@ -55,7 +59,7 @@ $updates = {
         }
 };
 
-is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
+is_deeply ( Rose::HTMLx::Form::DBIC::values_hash( $form ), $updates, 'Updates hash constructed' );
 # changing existing records
 
 $form->clear;
@@ -80,11 +84,12 @@ $updates = {
         }
 };
 
-is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
+is_deeply ( Rose::HTMLx::Form::DBIC::values_hash( $form ), $updates, 'Updates hash constructed' );
 
 # repeatable
 
 $form = UserForm2->new;
+$processor = Rose::HTMLx::Form::DBIC->new( form => $form, rs => $user_rs );
 $form->params( {
        name  => 'temp name',
        username => 'temp username',
@@ -98,8 +103,7 @@ $form->params( {
    }
 );
 $form->prepare();
-my $user = $schema->resultset( 'User' )->new( {} );
-options_from_resultset( $form, $schema->resultset( 'User' ));
+$processor->options_from_resultset();
 $form->init_fields();
 
 $updates = {
@@ -120,23 +124,24 @@ $updates = {
     ]
 };
 
-is_deeply ( values_hash( $form ), $updates, 'Updates hash constructed' );
+is_deeply ( Rose::HTMLx::Form::DBIC::values_hash( $form ), $updates, 'Updates hash constructed' );
 
 
 $dvd = $dvd_rs->next;
-$random_string = 'random ' . random_regex('\w{20}');
+my $random_string = 'random ' . random_regex('\w{20}');
 ok( $dvd->name ne $random_string );
 
 $form = DvdForm->new;
 $form->delete_forms;
-options_from_resultset( $form, $dvd_rs );
+$processor = Rose::HTMLx::Form::DBIC->new( form => $form, rs => $dvd_rs );
+$processor->options_from_resultset();
 $form->params( {
         name => $random_string, 
         owner => 1,
     }
 );
 $form->init_fields();
-$dvd = dbic_from_form( $form, $dvd_rs, $dvd->id );
+$dvd = $processor->dbic_from_form( $dvd->id );
 
 is ( $dvd->name, $random_string, 'Dvd name set' );
 
