@@ -6,7 +6,6 @@ use Test::More tests => 5;
 use lib 't/lib';
 use lib '../Rose-HTMLx-Form-Field-DateTimeSelect/lib/';
 use DBSchema;
-use YAML::Syck qw( Load );
 use Data::Dumper;
 use DvdForm;
 use UserForm2;
@@ -42,7 +41,6 @@ $form->params( {
 $form->init_fields();
 $form->validate;
 my $updates = {
-        aaaa => undef,
         tags => [ '2', '3' ], 
         name => 'Test name',
 #        'creation_date.year' => 2002,
@@ -75,7 +73,6 @@ $form->params( {
 );
 $form->init_fields();
 $updates = {
-        aaaa => undef,
         name => 'Test name',
         tags => [ ], 
         'owner' => $owner->id,

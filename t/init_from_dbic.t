@@ -4,7 +4,6 @@ use strict;
 use Test::More tests => 7;
 use lib 't/lib';
 use DBSchema;
-use YAML::Syck qw( Load );
 use Data::Dumper;
 use DvdForm;
 use UserForm2;

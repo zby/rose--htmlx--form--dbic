@@ -3,7 +3,6 @@
 use Test::More tests => 3;
 use lib 't/lib';
 use DBSchema;
-use YAML::Syck qw( Load );
 use Data::Dumper;
 use DvdForm;
 use UserForm2;
