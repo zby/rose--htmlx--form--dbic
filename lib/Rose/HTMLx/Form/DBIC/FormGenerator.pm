@@ -215,21 +215,16 @@ sub get_self_cols{
 
 =head1 NAME
 
-HTML::FormFu::ConfigGenerator - Module abstract (<= 44 characters) goes here
+Rose::HTMLx::Form::DBIC::FormGenerator - generates Rose::HTML forms from database schema
 
 =head1 SYNOPSIS
 
-  use HTML::FormFu::ConfigGenerator;
-  blah blah blah
+  use Rose::HTMLx::Form::DBIC::FormGenerator;
+  my $generator = Rose::HTMLx::Form::DBIC::FormGenerator->new( schema => $schema );
+  my $output = $generator->generate_form( 'User' );
 
 
 =head1 DESCRIPTION
-
-Stub documentation for this module was created by ExtUtils::ModuleMaker.
-It looks like the author of the extension was negligent enough
-to leave the stub unedited.
-
-Blah blah blah.
 
 
 =head1 USAGE
@@ -246,11 +241,9 @@ Blah blah blah.
 
 =head1 AUTHOR
 
-    HASH(0x8152c28)
-    CPAN ID: MODAUTHOR
-    XYZ Corp.
-    a.u.thor@a.galaxy.far.far.away
-    http://a.galaxy.far.far.away/modules
+    Zbigniew Lukasiak
+    CPAN ID: zby
+    http://perlalchemy.blogspot.com
 
 =head1 COPYRIGHT
 

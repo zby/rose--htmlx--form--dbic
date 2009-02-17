@@ -7,10 +7,9 @@ Makefile.PL
 lib/Rose/HTMLx/Form/DBIC.pm
 lib/Rose/HTMLx/Form/DBIC/FormGenerator.pm
 t/dbic_from_form.t
-t/init_with_dbic.t
+t/init_from_dbic.t
 t/options_from_resultset.t
 t/generate_form.t
-t/save_updates.t
 t/lib/DvdForm2.pm
 t/lib/DvdForm.pm
 t/lib/UserForm2.pm
